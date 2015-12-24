@@ -23,7 +23,7 @@ def embed(T, Te=2):
     Tfull[1:-1, 1:-1] = T
     return Tfull
 
-def laplace2d(get_A, get_rho, N=50, Te=2):
+def laplace2d(get_A, get_rho, N=51, Te=2):
     """Solve the Laplace equation on a 2D grid, with T=0 at all
     boundaries except y=0, where T=Te, and return an 2D array of size
     NxN giving the temperature distribution throughout the domain.
@@ -33,9 +33,9 @@ def laplace2d(get_A, get_rho, N=50, Te=2):
     b = get_rho(n, Te)
     U = sp.linalg.solve(A, b)
     T = U.reshape((n, n))
-    # Tfull = embed(T, Te)
-    # return Tfull
-    return T
+    Tfull = embed(T, Te)
+    return Tfull
+    #return T
 
 # Plotting functions
 
@@ -101,7 +101,7 @@ def get_A(n):
 def get_rho(n, Te=2):
     """Return column vector of size n^2 containing the boundary conditions."""
     b = np.zeros(n**2)
-    b[:n] = -Te
+    b[(((n**2)-1))/2] = -Te
     return b
 
 # Solve the equation and plot
@@ -112,4 +112,6 @@ plt.clf()
 plot_pcolor(Tfull)
 #plt.savefig('fig06-01.pdf')
 plt.show()
-print Tfull
+mid = (51-1)/2
+#print Tfull[mid-2:mid+2,mid-2:mid+2]
+print Tfull[mid-2:mid+3 , mid-2:mid+3]
