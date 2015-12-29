@@ -86,7 +86,7 @@ def laplace2d(get_A, get_rho, N=Mynum, Te=2):
 
     # Print value of the products at midpoint.
     mid = (n**2-1)/2
-    print "Q1: Value of the dot product A.u is %3.2f at (0.5,0.5)." % (CheckU[mid])
+    print "Q1: Value of the dot product A.u is %5.3f at (0.5,0.5)." % (CheckU[mid])
     return Tfull
 
 def embed(T, Te=2):
@@ -144,9 +144,6 @@ plt.figure(1)
 plt.clf()
 plot_pcolor(Tfull)
 plt.savefig('Q1_AlanTan_25816322.pdf')
-# plt.show()
-# mid = (Mynum-1)/2
-# print Tfull[mid,mid]
 ## Main program END ------------------------------------------------------------
 ##### Question 1 END -----------------------------------------------------------
 
@@ -158,7 +155,7 @@ over-relaxation solver"""
 
 ## Iterative Solver START ------------------------------------------------------
 
-def iterate(x, omega=1, N=3):
+def iterate(x, omega=1, N=Mynum):
     """Use the Gauss-Seidel algorithm to iterate the estimated solution
     vector x to equation A x = b, and return the improved solution.
 
@@ -169,34 +166,33 @@ def iterate(x, omega=1, N=3):
 
     """
     n = len(x)
-    h = 1.0 / (n - 1.)
+    h = 1.0 / (N - 1.)
+    A = (1/h**2)*get_A(N)
+    
     m = (n-1)/2
     l = (n-1)
     
-    x[0] = omega*h**2 * -(x[1] + x[N]) / -4.0 + (1-omega)*x[0]
-    x[1] = omega*h**2 * -(x[2] + x[N+1] + x[0]) / -4.0 + (1-omega)*x[1]
-    x[2] = omega * -(x[N+2] + x[1]) / -4.0 + (1-omega)*x[2]
+    x[0] = omega * -( A[0,1]*x[1] + A[0,N]*x[N] ) / A[0,0] + (1-omega)*x[0]
 
-    for i in range(3, m-1,3):
-        x[i] = omega*h**2 * -(x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
-        x[i+1] = omega*h**2 * -(x[i - 1] + x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
-        x[i+2] = omega*h**2 * -(x[i - 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+    for i in range(1,N):
+        x[i] = omega * -( A[i,i-1]*x[i-1] + A[i,i+1]*x[i+1] + A[i,i+N]*x[i+N] ) / A[i,i] + (1-omega)*x[i]
 
-    x[m-1] = omega*h**2 * (-(x[m] + x[m-N-1] + x[m+N-1]) )/ -4.0 + (1.0-omega)*x[m]
-    x[m] = omega*h**2 * ( (2*(h**2)) -(x[m - 1] + x[m + 1] + x[m-N] + x[m+N]) )/ -4.0 + (1.0-omega)*x[m] # something wrong here
-    x[m+1] = omega*h**2 * (-(x[m] + x[m-N+1] + x[m+N+1]) )/ -4.0 + (1.0-omega)*x[m]
+    for i in range(N, m):
+        x[i] = omega * -( A[i,i-N]*x[i-N] + A[i,i-1]*x[i-1] + A[i,i+1]*x[i+1] + A[i,i+N]*x[i+N] ) / A[i,i] + (1-omega)*x[i]
 
-    for i in range((m+2),(n-4),3):
-        x[i] = omega*h**2 * -(x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
-        x[i+1] = omega*h**2 * -(x[i - 1] + x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
-        x[i+2] = omega*h**2 * -(x[i - 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+    x[m] = omega * ( 2 -( A[m,m-N]*x[m-N] + A[m,m-1]*x[m-1] + A[m,m+1]*x[m+1] + A[m,m+N]*x[m+N] ) ) / A[m,m] + (1-omega)*x[m]
 
-    x[l-2] = omega*h**2 * -(x[l-N-2] + x[l-1]) / -4.0 + (1-omega)*x[l-2]
-    x[l-1] = omega*h**2 * -(x[l-2] + x[l-N-1] + x[l]) / -4.0 + (1-omega)*x[l-1]
-    x[l] = omega*h**2 * -(x[l-1] + x[l-N]) / -4.0 + (1-omega)*x[l]
+    for i in range(m+1, n-N):
+        x[i] = omega * -( A[i,i-N]*x[i-N] + A[i,i-1]*x[i-1] + A[i,i+1]*x[i+1] + A[i,i+N]*x[i+N] ) / A[i,i] + (1-omega)*x[i]
+
+    for i in range(n-N,l):
+        x[i] = omega * -( A[i,i-1]*x[i-1] + A[i,i+1]*x[i+1] + A[i,i-N]*x[i-N] ) / A[i,i] + (1-omega)*x[i]
+
+    x[l] = omega * -( A[l,l-1]*x[l-1] + A[l,l-N]*x[l-N] ) / A[l,l] + (1-omega)*x[l]
+
     return x
 
-def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
+def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=True):
     """ x, niter, omega = gauss_seidel(iterate, x, tol=1.0e-9, omega=1.0)
 
     Gauss-Seidel method for solving [A]{x} = {b}.
@@ -205,7 +201,7 @@ def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
     function iterate(x, omega) that returns the improved {x},
     given the current {x}. 'omega' is the relaxation factor.
     """
-    omega = 1.0
+    omega = 1.
     k = 10
     p = 1
     for i in range(1,501):
@@ -220,7 +216,7 @@ def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
                 dx1 = dx
             if i == k + p:
                 dx2 = dx
-                omega = -4.0 / (1.0 + sqrt(1.0 - (dx2 / dx1)**(1.0 / p)))
+                omega = 2.0 / (1.0 + sqrt(1.0 - (dx2 / dx1)**(1.0 / p)))
     print 'Gauss-Seidel failed to converge'
 
 ## Iterative Solver END --------------------------------------------------------
@@ -232,9 +228,23 @@ Aq2 = get_A(Mynum)
 h = 1. / (Mynum - 1.)
 ans = np.dot((1/h**2)*Aq2,x)
 
+T_q2 = x.reshape((Mynum, Mynum))
+Tfull_q2 = embed(T_q2, 2)
+
 for i in range(0,len(ans)):
-    if ans[i]<1e-9:
+    if ans[i]<1e-6:
         ans[i]=0
-print ans[(Mynum**2-1)/2]
+
+print "Q2: Value of the dot product A.x is %5.3f at (0.5,0.5)." % (ans[(Mynum**2-1)/2])
+plt.figure(2)
+plt.clf()
+plot_pcolor(Tfull_q2)
+plt.savefig('Q2_AlanTan_25816322.pdf')
 ## Main program END ------------------------------------------------------------
 ##### Question 2 END -----------------------------------------------------------
+
+#==============================================================================#
+
+##### Question 3 START ---------------------------------------------------------
+
+##### Question 3 END -----------------------------------------------------------
