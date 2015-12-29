@@ -3,12 +3,13 @@
 
 import math
 import numpy as np
+from numpy import dot, sqrt
 import scipy as sp
 from scipy.linalg import block_diag
 import matplotlib.pyplot as plt
 
 # Global variable to quickly change matrix size
-Mynum = 51
+Mynum = 25
 
 
 ##### Question 1 ---------------------------------------------------------------
@@ -149,101 +150,91 @@ plt.savefig('Q1_AlanTan_25816322.pdf')
 ## Main program END ------------------------------------------------------------
 ##### Question 1 END -----------------------------------------------------------
 
+#==============================================================================#
 
 ##### Question 2 ---------------------------------------------------------------
 """Instead of using a built-in solver method, implement and use a successive 
 over-relaxation solver"""
 
+## Iterative Solver START ------------------------------------------------------
 
-def get_k(i, j, n):
-    """Convert from (i,j) indices in T array to k index in U column
-    vector.
+def iterate(x, omega=1, N=3):
+    """Use the Gauss-Seidel algorithm to iterate the estimated solution
+    vector x to equation A x = b, and return the improved solution.
+
+    x : array of floats of size n
+         Solution vector.
+    omega : float
+         Relaxation factor.
+
     """
-    return i * n + j
+    n = len(x)
+    h = 1.0 / (n - 1.)
+    m = (n-1)/2
+    l = (n-1)
+    
+    x[0] = omega*h**2 * -(x[1] + x[N]) / -4.0 + (1-omega)*x[0]
+    x[1] = omega*h**2 * -(x[2] + x[N+1] + x[0]) / -4.0 + (1-omega)*x[1]
+    x[2] = omega * -(x[N+2] + x[1]) / -4.0 + (1-omega)*x[2]
 
+    for i in range(3, m-1,3):
+        x[i] = omega*h**2 * -(x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+        x[i+1] = omega*h**2 * -(x[i - 1] + x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+        x[i+2] = omega*h**2 * -(x[i - 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
 
-def move(i, j, direction):
-    """Move from index (i,j) in direction 'up', 'down', 'left' or 'right'.
+    x[m-1] = omega*h**2 * (-(x[m] + x[m-N-1] + x[m+N-1]) )/ -4.0 + (1.0-omega)*x[m]
+    x[m] = omega*h**2 * ( (2*(h**2)) -(x[m - 1] + x[m + 1] + x[m-N] + x[m+N]) )/ -4.0 + (1.0-omega)*x[m] # something wrong here
+    x[m+1] = omega*h**2 * (-(x[m] + x[m-N+1] + x[m+N+1]) )/ -4.0 + (1.0-omega)*x[m]
+
+    for i in range((m+2),(n-4),3):
+        x[i] = omega*h**2 * -(x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+        x[i+1] = omega*h**2 * -(x[i - 1] + x[i + 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+        x[i+2] = omega*h**2 * -(x[i - 1] + x[i-N] + x[i+N]) / -4.0 + (1.0-omega)*x[i]
+
+    x[l-2] = omega*h**2 * -(x[l-N-2] + x[l-1]) / -4.0 + (1-omega)*x[l-2]
+    x[l-1] = omega*h**2 * -(x[l-2] + x[l-N-1] + x[l]) / -4.0 + (1-omega)*x[l-1]
+    x[l] = omega*h**2 * -(x[l-1] + x[l-N]) / -4.0 + (1-omega)*x[l]
+    return x
+
+def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
+    """ x, niter, omega = gauss_seidel(iterate, x, tol=1.0e-9, omega=1.0)
+
+    Gauss-Seidel method for solving [A]{x} = {b}.
+
+    The matrix [A] should be sparse. User must supply the
+    function iterate(x, omega) that returns the improved {x},
+    given the current {x}. 'omega' is the relaxation factor.
     """
-    if direction == 'up':
-        return i - 1, j
-    if direction == 'down':
-        return i + 1, j
-    if direction == 'left':
-        return i, j - 1
-    if direction == 'right':
-        return i, j + 1
-    # Unknown direction
-    raise ValueError("Unknown direction %s" % direction)
+    omega = 1.0
+    k = 10
+    p = 1
+    for i in range(1,501):
+        xold = x.copy()
+        x = iterate(x, omega)
+        dx = sqrt(dot(x - xold, x - xold))
+        if dx < tol:
+            return x, i, omega
+        if relaxation:
+            # Compute of relaxation factor after k+p iterations
+            if i == k:
+                dx1 = dx
+            if i == k + p:
+                dx2 = dx
+                omega = -4.0 / (1.0 + sqrt(1.0 - (dx2 / dx1)**(1.0 / p)))
+    print 'Gauss-Seidel failed to converge'
 
-def get_k_neighbours(i, j, n):
-    """Return the k-indices of the (i,j) neighbours
-         (k_up, k_right, k_down, k_left)
-    going clockwise from the neighbour above node (i,j).
-    """
-    klst = []
-    for direction in ['up', 'right', 'down', 'left']:
-        idir, jdir = move(i, j, direction)
-        kdir = get_k(idir, jdir, n)
-        klst.append(kdir)
-    return klst
+## Iterative Solver END --------------------------------------------------------
 
+## Main program START ----------------------------------------------------------
+array = np.ones(Mynum**2)
+x, niter, omega = gauss_seidel(iterate, array, tol=1.0e-9)
+Aq2 = get_A(Mynum)
+h = 1. / (Mynum - 1.)
+ans = np.dot((1/h**2)*Aq2,x)
 
-## Construct Laplacian matrix START --------------------------------------------
-def fill(A, ilst=None, jlst=None, directions='UDLR'):
-    """Fill the stencil coefficients in matrix A corresponding to
-    nodes (i,j), where i is taken from 'ilst' and j from 'jlst', but
-    only for the directions listed in string directions, where
-    U -> up
-    D -> down
-    L -> left
-    R -> right.
-    """
-    # A is of shape n^2 x n^2 so:
-    n = int(np.sqrt(A.shape[0]))
-    # Set default values for ilst and jlst to cover
-    # all non-boundary nodes
-    if ilst is None:
-        # all rows except first and last one
-        ilst = range(1, n - 1)
-    if jlst is None:
-        # all columns except first and last one
-        jlst = range(1, n - 1)  #
-
-    # Loop over all nodes (i,j) in [ilst x jlst] and fill A
-    for i in ilst:
-        for j in jlst:
-            k = get_k(i, j, n)
-            up, right, down, left =  get_k_neighbours(i, j, n)
-            A[k, k]=-4
-            if 'U' in directions:
-                A[k, up] = 1
-            if 'D' in directions:
-                A[k, down] = 1
-            if 'L' in directions:
-                A[k, left] = 1
-            if 'R' in directions:
-                A[k, right] = 1
-
-def get_A2(n):
-    """Return 2D Laplace matrix A using solution 2"""
-    # Initialize the matrix
-    A = np.zeros((n**2, n**2))
-    # Fill A for inner nodes
-    fill(A)
-    # Fill top, bottom, left and right boundaries:
-    fill(A, ilst=[0], directions='DLR')    # top
-    fill(A, ilst=[n-1], directions='ULR')  # bottom
-    fill(A, jlst=[0], directions='UDR')  # left
-    fill(A, jlst=[n-1], directions='UDL')  # right
-    # Fill corners
-    fill(A, [0], [0], 'RD')      # top left
-    fill(A, [0], [n-1], 'LD')    # top right
-    fill(A, [n-1], [0], 'UR')    # bottom left
-    fill(A, [n-1], [n-1], 'LU')  # bottom right
-    return A
-
-
-## Construct Laplacian matrix END ----------------------------------------------
-
+for i in range(0,len(ans)):
+    if ans[i]<1e-9:
+        ans[i]=0
+print ans[(Mynum**2-1)/2]
+## Main program END ------------------------------------------------------------
 ##### Question 2 END -----------------------------------------------------------
