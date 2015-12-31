@@ -1,5 +1,5 @@
 """FEEG6002 Advance Computational Method Coursework 2015/16: PDE methods.
-   Name: Alan Tan Kay Meng	Student ID: 25816322 """
+   Name: Alan Tan Kay Meng  Student ID: 25816322 """
 
 import math
 import numpy as np
@@ -7,9 +7,10 @@ from numpy import dot, sqrt
 import scipy as sp
 from scipy.linalg import block_diag
 import matplotlib.pyplot as plt
+np.set_printoptions(linewidth = 999999 )
 
 # Global variable to quickly change matrix size
-Mynum = 25
+Mynum = 9
 
 
 ##### Question 1 ---------------------------------------------------------------
@@ -57,8 +58,8 @@ def laplace2d(get_A, get_rho, N=Mynum, Te=2):
     """Build in solver to compute value of u with determined boundary condition"""
     # Reduce the row and column of Laplacian matrix by 2 
     # Reduced row and column will be replace with embed in future
-    n = N - 2
-
+    # n = N - 2 for embed
+    n = N
     # Solving for the PDE(1)
     h = 1.0/(n-1)
     A = get_A(n) * (1/(h**2))
@@ -145,6 +146,8 @@ plt.clf()
 plot_pcolor(Tfull)
 plt.savefig('Q1_AlanTan_25816322.pdf')
 ## Main program END ------------------------------------------------------------
+
+
 ##### Question 1 END -----------------------------------------------------------
 
 #==============================================================================#
@@ -192,7 +195,7 @@ def iterate(x, omega=1, N=Mynum):
 
     return x
 
-def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=True):
+def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
     """ x, niter, omega = gauss_seidel(iterate, x, tol=1.0e-9, omega=1.0)
 
     Gauss-Seidel method for solving [A]{x} = {b}.
@@ -221,6 +224,7 @@ def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=True):
 
 ## Iterative Solver END --------------------------------------------------------
 
+
 ## Main program START ----------------------------------------------------------
 array = np.ones(Mynum**2)
 x, niter, omega = gauss_seidel(iterate, array, tol=1.0e-9)
@@ -241,10 +245,187 @@ plt.clf()
 plot_pcolor(Tfull_q2)
 plt.savefig('Q2_AlanTan_25816322.pdf')
 ## Main program END ------------------------------------------------------------
+
+
 ##### Question 2 END -----------------------------------------------------------
 
 #==============================================================================#
 
 ##### Question 3 START ---------------------------------------------------------
+"""Replace the simple 4 point stencil with the following stencil in your code for
+question (1) and solve PDE (1)"""
+
+## Construct Laplacian matrix START --------------------------------------------
+def get_A3(n):
+    """Return matrix A for 2D Laplace equation using block diagonal
+    structure, given the number of unknowns 'n' in each direction.
+    """
+    # Create a matrix B
+    Bdiag = -60 * np.eye(n)
+    Bupper1 = np.diag([16] * (n - 1), 1)
+    Bupper2 = np.diag([-1] * (n - 2), 2)
+    Blower1 = np.diag([16] * (n - 1), -1)
+    Blower2 = np.diag([-1] * (n - 2), -2)
+    B = Bdiag + Bupper1 + Blower1 + Bupper2 + Blower2
+
+    # Creat a list [B,B,B,...,B] with n Bs
+    blst = [B] * n
+
+    # Unpack and rearrange list of Bs into diagonal of matrix A
+    A = sp.linalg.block_diag(*blst)
+
+    # Upper diagonal array offset by n: we've got (n-1) I blocks
+    # each containing n ones
+    Dupper1 = np.diag(16*np.ones(n * (n - 1)), n)
+    Dupper2 = np.diag(-1*np.ones(n * (n - 2)), 2*n)
+
+    # Lower diagonal array offset by -n
+    Dlower1 = np.diag(16*np.ones(n * (n - 1)), -n)
+    Dlower2 = np.diag(-1*np.ones(n * (n - 2)), -2*n)
+    A += Dupper1 + Dlower1 + Dupper2 + Dlower2
+
+    # Print the A matrix
+    # print A 
+    return A
+## Construct Laplacian matrix END -----``--------------------------------------- 
+
+
+## Generic solver START --------------------------------------------------------
+def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
+    """Build in solver to compute value of u with determined boundary condition"""
+    # Reduce the row and column of Laplacian matrix by 2 
+    # Reduced row and column will be replace with embed in future
+    # n = N - 2
+    n = N
+
+    # Solving for the PDE(1)
+    h = 1.0/(n-1)
+    A = get_A3(n) * (1/(h**2))
+    b = get_rho(n, Te)
+    U = sp.linalg.solve(A, b)
+
+    # Reshape the u vector into nxn matrix for heat map plotting
+    T = U.reshape((n, n))
+
+    # Embed the surrounding of U matrix into zeros
+    Tfull = embed(T, Te)
+
+    # Verify that dot function of A matrix and U vector
+    # return the same rho value at midpoint
+    CheckU = np.dot(A,U)
+
+    # Filter very small value into zeros
+    for i in range(0,len(CheckU)):
+        if (abs(CheckU[i]) < 1e-12):
+            CheckU[i] = 0
+
+    # Validate that product of A and U matrix is the same as rho vector
+    # Will give warning if it is not the same
+    assert np.all(CheckU == b)
+
+    # Print value of the products at midpoint.
+    mid = (n**2-1)/2
+    print "Q3: Value of the dot product A.u is %5.3f at (0.5,0.5)." % (CheckU[mid])
+    return Tfull
+## Generic solver END ----------------------------------------------------------
+
+
+## Main program START ----------------------------------------------------------
+Tfull = laplace2dq3(get_A3, get_rho)
+plt.figure(1)
+plt.clf()
+plot_pcolor(Tfull)
+plt.savefig('Q3_AlanTan_25816322.pdf')
+
+## Main program END ------------------------------------------------------------
+
 
 ##### Question 3 END -----------------------------------------------------------
+
+#==============================================================================#
+
+##### Question 4 START--- ------------------------------------------------------
+"""Develop a Gauss-Seidel "red-black" solver and use it to solve PDE(1)."""
+
+def redblackA(N=Mynum):
+    """Matrix A"""
+    h = 1.0 / (N-1)
+    Aold = get_A(N) * (1/h**2)
+    Anew = np.diag(np.zeros(N**2))
+    n = N**2
+
+    for i in range(0,(n+1),2):
+        for j in range(0,(n+1),2):
+            Anew[i/2,j/2] = Aold[i,j]
+    
+    for i in range(1,(n+1),2):
+        for j in range(1,(n),2):
+            Anew[(i-1)/2,((n-1)/2)+((j+1)/2)] = Aold[i-1,j]
+
+    for i in range(0,(n-1),2):
+        for j in range(0,(n+1),2):
+            Anew[((n+1)/2)+(i/2),j/2] = Aold[i+1,j]
+
+    for i in range(1,(n-1),2):
+        for j in range(1,(n-1),2):
+            Anew[((n-1)/2)+((i+1)/2) , ((n-1)/2)+((j+1)/2)] = Aold[i,j]
+
+    return Anew
+
+def redblackb(N=Mynum):
+    """Matrix b"""
+    bold = get_rho(N)
+    n = N**2
+    bnew = np.zeros(n)
+
+    for i in range(0,n,2):
+        bnew[i/2] = bold[i]
+
+    for i in range(1,n,2):
+        bnew[((n-1)/2)+(i+1)/2] = bold[i]
+
+    return bnew
+
+def iterate4(x, omega=1, N=Mynum):
+    """Use the Gauss-Seidel algorithm to iterate the estimated solution
+    vector x to equation A x = b, and return the improved solution.
+
+    x : array of floats of size n
+         Solution vector.
+    omega : float
+         Relaxation factor.
+
+    """
+    n = len(x)
+    h = 1.0 / (N - 1.)
+    A = redblackA(N)
+    b = redblackb(N)
+    
+    m = (n-1)/2
+    l = (n-1)
+    
+    for i in range(0,n):
+        xsum=0
+        for j in range(0,n):
+            xsum =  A[i,j]*x[j] 
+        xsum = xsum - A[i,i]*x[i]    
+        x[i] = omega * (b[i] - xsum) / A[i,i] + (1-omega)*x[i]
+   
+    return x
+
+# x4, niter4, omega4 = gauss_seidel(iterate4, array, tol=1.0e-9)
+
+x4, niter4, omega4 = gauss_seidel(iterate4, array, tol=1.0e-9)
+Aq4= get_A(Mynum)
+h = 1. / (Mynum - 1.)
+ans4 = np.dot((1/h**2)*Aq4,x4)
+
+T_q4 = x.reshape((Mynum, Mynum))
+Tfull_q4 = embed(T_q4, 2)
+
+for i in range(0,len(x4)):
+    if ans4[i]<1e-6:
+        ans4[i]=0
+
+print ans4
+##### Question 4 END -----------------------------------------------------------
