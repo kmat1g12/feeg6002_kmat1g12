@@ -83,11 +83,11 @@ def laplace2d(get_A, get_rho, N=Mynum, Te=2):
 
     # Validate that product of A and U matrix is the same as rho vector
     # Will give warning if it is not the same
-    assert np.all(CheckU == b)
+    assert np.all(CheckU == b) # working only mynum = 7 and 9 
 
     # Print value of the products at midpoint.
     mid = (n**2-1)/2
-    print "Q1: Value of the dot product A.u is %5.3f at (0.5,0.5)." % (CheckU[mid])
+    print "Q1: Value of the dot product A.u1 is %5.3f at (0.5,0.5)." % (CheckU[mid])
     return Tfull
 
 def embed(T, Te=2):
@@ -150,7 +150,9 @@ plt.savefig('Q1_AlanTan_25816322.pdf')
 
 ##### Question 1 END -----------------------------------------------------------
 
+
 #==============================================================================#
+
 
 ##### Question 2 ---------------------------------------------------------------
 """Instead of using a built-in solver method, implement and use a successive 
@@ -195,7 +197,7 @@ def iterate(x, omega=1, N=Mynum):
 
     return x
 
-def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=False):
+def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=True):
     """ x, niter, omega = gauss_seidel(iterate, x, tol=1.0e-9, omega=1.0)
 
     Gauss-Seidel method for solving [A]{x} = {b}.
@@ -238,8 +240,7 @@ Tfull_q2 = embed(T_q2, 2)
 for i in range(0,len(ans)):
     if ans[i]<1e-6:
         ans[i]=0
-
-print "Q2: Value of the dot product A.x is %5.3f at (0.5,0.5)." % (ans[(Mynum**2-1)/2])
+print "Q2: Value of the dot product A.x2 is %5.3f at (0.5,0.5)." % (ans[(Mynum**2-1)/2])
 plt.figure(2)
 plt.clf()
 plot_pcolor(Tfull_q2)
@@ -249,7 +250,9 @@ plt.savefig('Q2_AlanTan_25816322.pdf')
 
 ##### Question 2 END -----------------------------------------------------------
 
+
 #==============================================================================#
+
 
 ##### Question 3 START ---------------------------------------------------------
 """Replace the simple 4 point stencil with the following stencil in your code for
@@ -303,7 +306,6 @@ def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
     A = get_A3(n) * (1/(h**2))
     b = get_rho(n, Te)
     U = sp.linalg.solve(A, b)
-
     # Reshape the u vector into nxn matrix for heat map plotting
     T = U.reshape((n, n))
 
@@ -321,20 +323,20 @@ def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
 
     # Validate that product of A and U matrix is the same as rho vector
     # Will give warning if it is not the same
-    assert np.all(CheckU == b)
+    assert np.all(CheckU == b) # work for Mynum = 7 and 9
 
     # Print value of the products at midpoint.
     mid = (n**2-1)/2
-    print "Q3: Value of the dot product A.u is %5.3f at (0.5,0.5)." % (CheckU[mid])
+    print "Q3: Value of the dot product A.u3 is %5.3f at (0.5,0.5)." % (CheckU[mid])
     return Tfull
 ## Generic solver END ----------------------------------------------------------
 
 
 ## Main program START ----------------------------------------------------------
-Tfull = laplace2dq3(get_A3, get_rho)
-plt.figure(1)
+Tfull3 = laplace2dq3(get_A3, get_rho)
+plt.figure(3)
 plt.clf()
-plot_pcolor(Tfull)
+plot_pcolor(Tfull3)
 plt.savefig('Q3_AlanTan_25816322.pdf')
 
 ## Main program END ------------------------------------------------------------
@@ -342,7 +344,9 @@ plt.savefig('Q3_AlanTan_25816322.pdf')
 
 ##### Question 3 END -----------------------------------------------------------
 
+
 #==============================================================================#
+
 
 ##### Question 4 START--- ------------------------------------------------------
 """Develop a Gauss-Seidel "red-black" solver and use it to solve PDE(1)."""
@@ -386,6 +390,18 @@ def redblackb(N=Mynum):
 
     return bnew
 
+def redblackb_rev(x,N=Mynum):
+    n = len(x)
+    bnew = np.zeros(n)
+
+    for i in range(0,(n+1)/2):
+        bnew[i*2] = x[i]
+
+    for i in range((n+1)/2 , n):
+        bnew[(i*2)-n] = x[i]
+
+    return bnew
+
 def iterate4(x, omega=1, N=Mynum):
     """Use the Gauss-Seidel algorithm to iterate the estimated solution
     vector x to equation A x = b, and return the improved solution.
@@ -407,25 +423,29 @@ def iterate4(x, omega=1, N=Mynum):
     for i in range(0,n):
         xsum=0
         for j in range(0,n):
-            xsum =  A[i,j]*x[j] 
+            xsum =  xsum + A[i,j]*x[j] 
         xsum = xsum - A[i,i]*x[i]    
         x[i] = omega * (b[i] - xsum) / A[i,i] + (1-omega)*x[i]
    
     return x
 
-# x4, niter4, omega4 = gauss_seidel(iterate4, array, tol=1.0e-9)
-
 x4, niter4, omega4 = gauss_seidel(iterate4, array, tol=1.0e-9)
-Aq4= get_A(Mynum)
+x4rev = redblackb_rev(x)
+Aq4 = get_A(Mynum)
 h = 1. / (Mynum - 1.)
-ans4 = np.dot((1/h**2)*Aq4,x4)
+ans4 = np.dot((1/h**2)*Aq4,x4rev)
 
-T_q4 = x.reshape((Mynum, Mynum))
+T_q4 = x4rev.reshape((Mynum, Mynum))
 Tfull_q4 = embed(T_q4, 2)
 
 for i in range(0,len(x4)):
     if ans4[i]<1e-6:
         ans4[i]=0
 
-print ans4
+plt.figure(4)
+plt.clf()
+plot_pcolor(Tfull_q4)
+plt.savefig('Q4_AlanTan_25816322.pdf')
+
+print "Q4: Value of the dot product A.x4 is %5.3f at (0.5,0.5)." % (ans4[(Mynum**2-1)/2])
 ##### Question 4 END -----------------------------------------------------------
