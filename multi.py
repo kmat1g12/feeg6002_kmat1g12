@@ -1,5 +1,5 @@
 """FEEG6002 Advance Computational Method Coursework 2015/16: PDE methods.
-   Name: Alan Tan Kay Meng  Student ID: 25816322 """
+   Name: Alan Tan Kay Meng          Student ID: 25816322 """
 
 import math
 import numpy as np
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(linewidth = 999999 )
 
 # Global variable to quickly change matrix size
-Mynum = 9
+Mynum = 3
 
 
 ##### Question 1 ---------------------------------------------------------------
@@ -87,6 +87,7 @@ def laplace2d(get_A, get_rho, N=Mynum, Te=2):
 
     # Print value of the products at midpoint.
     mid = (n**2-1)/2
+    print U
     print "Q1: Value of the dot product A.u1 is %5.3f at (0.5,0.5)." % (CheckU[mid])
     return Tfull
 
@@ -106,7 +107,7 @@ def embed(T, Te=2):
 def plot_pcolor(Tfull):
     """Plot temperature in the domain using pcolor"""
     N = Tfull.shape[0]
-    x = y = np.linspace(0, 1, N)
+    x = y = np.linspace(0, 1, N+1)
     X, Y = np.meshgrid(x,y)
     plt.pcolor(X, Y, Tfull)
     plt.axis('scaled')
@@ -206,7 +207,7 @@ def gauss_seidel(iterate, x, tol=1.0e-9, relaxation=True):
     function iterate(x, omega) that returns the improved {x},
     given the current {x}. 'omega' is the relaxation factor.
     """
-    omega = 1.
+    omega = 1
     k = 10
     p = 1
     for i in range(1,501):
@@ -240,7 +241,10 @@ Tfull_q2 = embed(T_q2, 2)
 for i in range(0,len(ans)):
     if ans[i]<1e-6:
         ans[i]=0
+
+print x        
 print "Q2: Value of the dot product A.x2 is %5.3f at (0.5,0.5)." % (ans[(Mynum**2-1)/2])
+print "Q2: niter = %d, optimal omega = %g" %(niter,omega)
 plt.figure(2)
 plt.clf()
 plot_pcolor(Tfull_q2)
@@ -288,7 +292,7 @@ def get_A3(n):
     A += Dupper1 + Dlower1 + Dupper2 + Dlower2
 
     # Print the A matrix
-    # print A 
+    # print A.astype(int) 
     return A
 ## Construct Laplacian matrix END -----``--------------------------------------- 
 
@@ -303,12 +307,11 @@ def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
 
     # Solving for the PDE(1)
     h = 1.0/(n-1)
-    A = get_A3(n) * (1/(h**2))
+    A = get_A3(n) * (1/(12*(h**2)))
     b = get_rho(n, Te)
     U = sp.linalg.solve(A, b)
     # Reshape the u vector into nxn matrix for heat map plotting
     T = U.reshape((n, n))
-
     # Embed the surrounding of U matrix into zeros
     Tfull = embed(T, Te)
 
@@ -323,10 +326,11 @@ def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
 
     # Validate that product of A and U matrix is the same as rho vector
     # Will give warning if it is not the same
-    assert np.all(CheckU == b) # work for Mynum = 7 and 9
+    # assert np.all(CheckU == b) # work for Mynum = 7 and 9
 
     # Print value of the products at midpoint.
     mid = (n**2-1)/2
+    print U
     print "Q3: Value of the dot product A.u3 is %5.3f at (0.5,0.5)." % (CheckU[mid])
     return Tfull
 ## Generic solver END ----------------------------------------------------------
@@ -447,5 +451,7 @@ plt.clf()
 plot_pcolor(Tfull_q4)
 plt.savefig('Q4_AlanTan_25816322.pdf')
 
+print x4rev
 print "Q4: Value of the dot product A.x4 is %5.3f at (0.5,0.5)." % (ans4[(Mynum**2-1)/2])
+print "Q4: niter = %d, optimal omega = %g" %(niter4,omega4)
 ##### Question 4 END -----------------------------------------------------------
