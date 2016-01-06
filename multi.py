@@ -68,7 +68,7 @@ def laplace2d(get_A, get_rho, N=Mynum, Te=2):
 
     # Reshape the u vector into nxn matrix for heat map plotting
     T = U.reshape((n, n))
-    # print T
+    print T
     
     # Embed the surrounding of U matrix into zeros
     Tfull = embed(T, Te)
@@ -305,6 +305,7 @@ def x_conv(iterate_save, x, tol=1.0e-9):
     plt.ylabel("x value")
     plt.legend()
     plt.savefig('Q2conv_AlanTan_25816322.pdf')
+    plt.show()
 ## Iterative Solver END --------------------------------------------------------
 
 
@@ -396,7 +397,7 @@ def laplace2dq3(get_A3, get_rho, N=Mynum, Te=2):
     U = sp.linalg.solve(A, b)
     # Reshape the u vector into nxn matrix for heat map plotting
     T = U.reshape((n, n))
-    #print T
+    print T
     # Embed the surrounding of U matrix into zeros
     Tfull = embed(T, Te)
 
